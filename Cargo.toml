@@ -1,0 +1,7 @@
+[package]
+name = "proximity-sort"
+version = "0.1.0"
+authors = ["Jon Gjengset <jon@thesquareplanet.com>"]
+
+[dependencies]
+clap = "2.32"
