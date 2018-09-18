@@ -40,7 +40,7 @@ And you can add it to your `.vimrc` with:
 ```vim
 function! s:list_cmd()
   let base = fnamemodify(expand('%'), ':h:.:S')
-  return base == '.' ? 'fd -t f' : printf('fd -t f -pF %s | proximity-sort %s', base, expand('%'))
+  return base == '.' ? 'fd --type file --follow' : printf('fd --type file --follow | proximity-sort %s', expand('%'))
 endfunction
 
 command! -bang -nargs=? -complete=dir Files
