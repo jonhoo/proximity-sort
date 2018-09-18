@@ -32,7 +32,7 @@ modifications to `fzf` itself (see junegunn/fzf#1380).
 It can be used with `fzf` by running:
 
 ```console
-$ fd -pFt f path/to/file | proximity-sort | fzf --tiebreak=index
+$ fd -t f | proximity-sort path/to/file | fzf --tiebreak=index
 ```
 
 And you can add it to your `.vimrc` with:
@@ -40,7 +40,7 @@ And you can add it to your `.vimrc` with:
 ```vim
 function! s:list_cmd()
   let base = fnamemodify(expand('%'), ':h:.:S')
-  return base == '.' ? 'fd --type file --follow' : printf('fd --type file --follow | proximity-sort %s', expand('%'))
+  return base == '.' ? 'fd -t f' : printf('fd -t f | proximity-sort %s', expand('%'))
 endfunction
 
 command! -bang -nargs=? -complete=dir Files
