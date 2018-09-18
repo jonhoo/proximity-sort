@@ -1,7 +1,21 @@
 [package]
 name = "proximity-sort"
 version = "0.1.0"
+
+readme = "README.md"
+description = "Simple command-line utility for sorting inputs by proximity to a path argument"
 authors = ["Jon Gjengset <jon@thesquareplanet.com>"]
+
+homepage = "https://github.com/jonhoo/proximity-sort"
+repository = "https://github.com/jonhoo/proximity-sort.git"
+
+keywords = ["cli", "pipe", "filter", "utility"]
+categories = ["command-line-utilities"]
+
+license = "MIT/Apache-2.0"
+
+[badges]
+travis-ci = { repository = "jonhoo/proximity-sort" }
 
 [dependencies]
 clap = "2.32"
