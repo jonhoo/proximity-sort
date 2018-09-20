@@ -70,11 +70,29 @@ where
     let path: Vec<_> = Path::new(context_path).components().collect();
     let mut lines = BinaryHeap::new();
     for line in input {
+        let mut missed = false;
         let mut path = path.iter();
         let proximity = Path::new(OsStr::from_bytes(&line))
             .components()
-            .take_while(move |c| path.next().map(|pc| pc == c).unwrap_or(false))
-            .count();
+            .map(|c| {
+                // if we've already missed, each additional dir is one further away
+                if missed {
+                    return -1;
+                }
+
+                // we want to score positively if c matches the next segment from target path
+                if let Some(p) = path.next() {
+                    if p == &c {
+                        // matching path segment!
+                        return 1;
+                    } else {
+                        // non-matching path segment
+                        missed = true;
+                    }
+                }
+
+                -1
+            }).sum();
 
         lines.push(Line {
             score: proximity,
@@ -86,7 +104,7 @@ where
 }
 
 struct Line {
-    score: usize,
+    score: isize,
     path: Vec<u8>,
 }
 
@@ -175,6 +193,18 @@ mod tests {
                 bts!("foobar/controller/user.rb"),
                 bts!("foobar/views/admin.rb"),
             ]
+        );
+    }
+
+    #[test]
+    fn check_root_is_closer() {
+        assert_eq!(
+            reorder(
+                vec![bts!("a/foo.txt"), bts!("b/foo.txt"), bts!("foo.txt"),],
+                "a/null.txt",
+            ).map(Into::into)
+            .collect::<Vec<Vec<u8>>>(),
+            vec![bts!("a/foo.txt"), bts!("foo.txt"), bts!("b/foo.txt"),]
         );
     }
 
