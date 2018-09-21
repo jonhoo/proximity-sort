@@ -26,8 +26,11 @@ between the input path and the provided path.
 
 This program was primarily written to allow context-aware suggestions
 for [`fzf`](https://github.com/junegunn/fzf) (requested in
-junegunn/fzf.vim#360 and junegunn/fzf.vim#492) without making
-modifications to `fzf` itself (see junegunn/fzf#1380).
+[junegunn/fzf.vim#360](https://github.com/junegunn/fzf.vim/issues/360)
+and
+[junegunn/fzf.vim#492](https://github.com/junegunn/fzf.vim/issues/492))
+without making modifications to `fzf` itself (see
+[junegunn/fzf#1380](https://github.com/junegunn/fzf/pull/1380)).
 
 It can be used with `fzf` by running:
 
