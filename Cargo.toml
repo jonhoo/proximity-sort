@@ -1,6 +1,6 @@
 [package]
 name = "proximity-sort"
-version = "1.0.2"
+version = "1.0.3"
 
 readme = "README.md"
 description = "Simple command-line utility for sorting inputs by proximity to a path argument"
@@ -16,6 +16,7 @@ license = "MIT/Apache-2.0"
 
 [badges]
 travis-ci = { repository = "jonhoo/proximity-sort" }
+maintenance = { status = "passively-maintained" }
 
 [dependencies]
 clap = "2.32"
