@@ -1,6 +1,6 @@
 # proximity-sort
 
-[![Crates.io](https://img.shields.io/crates/v/faktory.svg)](https://crates.io/crates/faktory)
+[![Crates.io](https://img.shields.io/crates/v/proximity-sort.svg)](https://crates.io/crates/proximity-sort)
 [![Build Status](https://travis-ci.org/jonhoo/proximity-sort.svg?branch=master)](https://travis-ci.org/jonhoo/proximity-sort)
 
 This script provides a simple command-line utility that sorts its inputs
