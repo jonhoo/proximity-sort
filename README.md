@@ -32,6 +32,17 @@ and
 without making modifications to `fzf` itself (see
 [junegunn/fzf#1380](https://github.com/junegunn/fzf/pull/1380)).
 
+## Installation
+
+If you have [Rust installed](https://www.rust-lang.org/tools/install), you can
+install this with:
+
+```shell
+cargo install proximity-sort
+```
+
+## Usage
+
 It can be used with `fzf` by running:
 
 ```console
