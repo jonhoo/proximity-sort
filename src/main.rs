@@ -1,4 +1,4 @@
-extern crate clap;
+#![warn(rust_2018_idioms)]
 
 use clap::{App, Arg};
 use std::cmp::Ordering;
@@ -19,13 +19,16 @@ fn main() {
                     .help("Compute the proximity to this path.")
                     .required(true)
                     .index(1),
-            ).arg(
+            )
+            .arg(
                 Arg::with_name("read0").short("0").long("read0").help(
                     "Read input delimited by ASCII NUL characters instead of newline characters",
                 ),
-            ).arg(Arg::with_name("print0").long("print0").help(
+            )
+            .arg(Arg::with_name("print0").long("print0").help(
                 "Print output delimited by ASCII NUL characters instead of newline characters",
-            )).get_matches();
+            ))
+            .get_matches();
 
     let stdin = io::stdin();
     let input = BufReader::new(stdin.lock());
@@ -92,7 +95,8 @@ where
                 }
 
                 -1
-            }).sum();
+            })
+            .sum();
 
         lines.push(Line {
             score: proximity,
@@ -169,7 +173,8 @@ mod tests {
                     bts!("misc/test.txt"),
                 ],
                 "bar/main.txt",
-            ).take(2)
+            )
+            .take(2)
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
             vec![bts!("bar/main.txt"), bts!("bar/test.txt"),]
@@ -185,7 +190,8 @@ mod tests {
                     bts!("foobar/views/admin.rb"),
                 ],
                 "foobar/controller/admin.rb",
-            ).take(3)
+            )
+            .take(3)
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
             vec![
@@ -202,7 +208,8 @@ mod tests {
             reorder(
                 vec![bts!("a/foo.txt"), bts!("b/foo.txt"), bts!("foo.txt"),],
                 "a/null.txt",
-            ).map(Into::into)
+            )
+            .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
             vec![bts!("a/foo.txt"), bts!("foo.txt"), bts!("b/foo.txt"),]
         );
@@ -214,7 +221,8 @@ mod tests {
             reorder(
                 vec![bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),],
                 "null.txt",
-            ).map(Into::into)
+            )
+            .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
             vec![bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),]
         );
