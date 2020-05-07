@@ -61,3 +61,23 @@ command! -bang -nargs=? -complete=dir Files
   \ call fzf#vim#files(<q-args>, {'source': s:list_cmd(),
   \                               'options': '--tiebreak=index'}, <bang>0)
 ```
+
+Paths of the same proximity are output in an arbitrary order by default:
+
+```console
+$ echo "banana\napple/pie\napple" | proximity-sort .
+> banana
+> apple
+> apple/pie
+```
+
+You may enable alphabetic sorting of the groups of same-proximity paths, at the
+expense of performance, by passing `-s` or `--sort-same-proximity` to
+`proximity-sort`, like so:
+
+```console
+$ echo "banana\napple/pie\napple" | proximity-sort . -s
+> apple
+> banana
+> apple/pie
+```
