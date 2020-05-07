@@ -58,14 +58,27 @@ fn main() {
     };
 
     let stdout = io::stdout();
-    let mut output = BufWriter::new(stdout.lock());
+    let output = BufWriter::new(stdout.lock());
     let outsep = if matches.is_present("print0") {
         b'\0'
     } else {
         b'\n'
     };
 
-    for mut line in reorder(input, path, matches.is_present("sort_same_proximity")) {
+    let reordered = reorder(input, path);
+    if matches.is_present("sort_same_proximity") {
+        foo(
+            output,
+            outsep,
+            sort_same_proximity(reordered.heap).iter().cloned(),
+        );
+    } else {
+        foo(output, outsep, reordered);
+    }
+}
+
+fn foo<T: Write>(mut output: BufWriter<T>, outsep: u8, lines: impl Iterator<Item = Vec<u8>>) {
+    for mut line in lines {
         line.push(outsep);
         if let Err(e) = output.write_all(&line) {
             panic!("failed to write path: {}", e);
@@ -73,11 +86,7 @@ fn main() {
     }
 }
 
-fn reorder(
-    input: impl IntoIterator<Item = Vec<u8>>,
-    context_path: &str,
-    sort_same_proximity: bool,
-) -> Vec<Vec<u8>> {
+fn reorder(input: impl IntoIterator<Item = Vec<u8>>, context_path: &str) -> BinaryHeapIterator {
     let path: Vec<_> = Path::new(context_path).components().collect();
     let mut lines = BinaryHeap::new();
     for line in input {
@@ -112,16 +121,11 @@ fn reorder(
         })
     }
 
+    BinaryHeapIterator { heap: lines }
+}
+
+fn sort_same_proximity(mut lines: BinaryHeap<Line>) -> Vec<Vec<u8>> {
     let mut buf = Vec::with_capacity(lines.len());
-
-    if !sort_same_proximity {
-        while let Some(line) = lines.pop() {
-            buf.push(line.path);
-        }
-
-        return buf;
-    }
-
     let mut line_group = BTreeSet::new();
     let mut current_group_score = 0;
     while let Some(line) = lines.pop() {
@@ -172,6 +176,17 @@ impl Ord for Line {
     }
 }
 
+struct BinaryHeapIterator {
+    heap: BinaryHeap<Line>,
+}
+
+impl Iterator for BinaryHeapIterator {
+    type Item = Vec<u8>;
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(self.heap.pop()?.path)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,8 +208,9 @@ mod tests {
                     bts!("misc/test.txt"),
                 ],
                 "bar/main.txt",
-                false,
-            )[..2],
+            )
+            .take(2)
+            .collect::<Vec<Vec<u8>>>(),
             [bts!("bar/main.txt"), bts!("bar/test.txt"),]
         );
 
@@ -208,8 +224,9 @@ mod tests {
                     bts!("foobar/views/admin.rb"),
                 ],
                 "foobar/controller/admin.rb",
-                false,
-            )[..3],
+            )
+            .take(3)
+            .collect::<Vec<Vec<u8>>>(),
             [
                 bts!("foobar/controller/admin.rb"),
                 bts!("foobar/controller/user.rb"),
@@ -224,9 +241,9 @@ mod tests {
             reorder(
                 vec![bts!("a/foo.txt"), bts!("b/foo.txt"), bts!("foo.txt"),],
                 "a/null.txt",
-                false,
-            ),
-            vec![bts!("a/foo.txt"), bts!("foo.txt"), bts!("b/foo.txt"),]
+            )
+            .collect::<Vec<Vec<u8>>>(),
+            [bts!("a/foo.txt"), bts!("foo.txt"), bts!("b/foo.txt"),]
         );
     }
 
@@ -236,9 +253,9 @@ mod tests {
             reorder(
                 vec![bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),],
                 "null.txt",
-                false,
-            ),
-            vec![bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),]
+            )
+            .collect::<Vec<Vec<u8>>>(),
+            [bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),]
         );
     }
 
@@ -255,36 +272,38 @@ mod tests {
                     bts!("a/1.txt"),
                 ],
                 "null.txt",
-                true,
-            ),
-            vec![
-                bts!("a/1.txt"),
-                bts!("a/2.txt"),
-                bts!("b/1.txt"),
+            )
+            .collect::<Vec<Vec<u8>>>(),
+            [
                 bts!("b/2.txt"),
+                bts!("a/1.txt"),
+                bts!("b/1.txt"),
+                bts!("a/2.txt"),
                 bts!("a/x/1.txt"),
                 bts!("a/x/2.txt"),
             ]
         );
 
         assert_eq!(
-            reorder(
-                vec![
-                    bts!("b/2.txt"),
-                    bts!("b/1.txt"),
-                    bts!("a/x/2.txt"),
-                    bts!("a/x/1.txt"),
-                    bts!("a/2.txt"),
-                    bts!("a/1.txt"),
-                ],
-                "null.txt",
-                false,
+            sort_same_proximity(
+                reorder(
+                    vec![
+                        bts!("b/2.txt"),
+                        bts!("b/1.txt"),
+                        bts!("a/x/2.txt"),
+                        bts!("a/x/1.txt"),
+                        bts!("a/2.txt"),
+                        bts!("a/1.txt"),
+                    ],
+                    "null.txt",
+                )
+                .heap
             ),
-            vec![
-                bts!("b/2.txt"),
+            [
                 bts!("a/1.txt"),
-                bts!("b/1.txt"),
                 bts!("a/2.txt"),
+                bts!("b/1.txt"),
+                bts!("b/2.txt"),
                 bts!("a/x/1.txt"),
                 bts!("a/x/2.txt"),
             ]
