@@ -2,6 +2,7 @@
 
 use clap::{App, Arg};
 use std::cmp::Ordering;
+use std::collections::BTreeSet;
 use std::collections::BinaryHeap;
 use std::ffi::OsStr;
 use std::io::prelude::*;
@@ -28,6 +29,12 @@ fn main() {
             .arg(Arg::with_name("print0").long("print0").help(
                 "Print output delimited by ASCII NUL characters instead of newline characters",
             ))
+            .arg(
+                Arg::with_name("sort_same_proximity")
+                    .short("s")
+                    .long("sort-same-proximity")
+                    .help("Sort alphabetically groups of paths with the same proximity"),
+            )
             .get_matches();
 
     let stdin = io::stdin();
@@ -58,18 +65,19 @@ fn main() {
         b'\n'
     };
 
-    for mut line in reorder(input, path) {
-        line.path.push(outsep);
-        if let Err(e) = output.write_all(&line.path) {
+    for mut line in reorder(input, path, matches.is_present("sort_same_proximity")) {
+        line.push(outsep);
+        if let Err(e) = output.write_all(&line) {
             panic!("failed to write path: {}", e);
         }
     }
 }
 
-fn reorder<I>(input: I, context_path: &str) -> impl Iterator<Item = Line>
-where
-    I: IntoIterator<Item = Vec<u8>>,
-{
+fn reorder(
+    input: impl IntoIterator<Item = Vec<u8>>,
+    context_path: &str,
+    sort_same_proximity: bool,
+) -> Vec<Vec<u8>> {
     let path: Vec<_> = Path::new(context_path).components().collect();
     let mut lines = BinaryHeap::new();
     for line in input {
@@ -104,7 +112,33 @@ where
         })
     }
 
-    BinaryHeapIterator { heap: lines }
+    let mut buf = Vec::with_capacity(lines.len());
+
+    if !sort_same_proximity {
+        while let Some(line) = lines.pop() {
+            buf.push(line.path);
+        }
+
+        return buf;
+    }
+
+    let mut line_group = BTreeSet::new();
+    let mut current_group_score = 0;
+    while let Some(line) = lines.pop() {
+        if line_group.len() == 0 {
+            current_group_score = line.score;
+        }
+
+        if line.score != current_group_score {
+            buf.extend(line_group.iter().cloned());
+            line_group.clear();
+        }
+
+        line_group.insert(line.path);
+    }
+
+    buf.extend(line_group.iter().cloned());
+    buf
 }
 
 struct Line {
@@ -138,20 +172,6 @@ impl Ord for Line {
     }
 }
 
-struct BinaryHeapIterator<T> {
-    heap: BinaryHeap<T>,
-}
-
-impl<T> Iterator for BinaryHeapIterator<T>
-where
-    T: Ord,
-{
-    type Item = T;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.heap.pop()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -173,11 +193,9 @@ mod tests {
                     bts!("misc/test.txt"),
                 ],
                 "bar/main.txt",
-            )
-            .take(2)
-            .map(Into::into)
-            .collect::<Vec<Vec<u8>>>(),
-            vec![bts!("bar/main.txt"), bts!("bar/test.txt"),]
+                false,
+            )[..2],
+            [bts!("bar/main.txt"), bts!("bar/test.txt"),]
         );
 
         assert_eq!(
@@ -190,11 +208,9 @@ mod tests {
                     bts!("foobar/views/admin.rb"),
                 ],
                 "foobar/controller/admin.rb",
-            )
-            .take(3)
-            .map(Into::into)
-            .collect::<Vec<Vec<u8>>>(),
-            vec![
+                false,
+            )[..3],
+            [
                 bts!("foobar/controller/admin.rb"),
                 bts!("foobar/controller/user.rb"),
                 bts!("foobar/views/admin.rb"),
@@ -208,9 +224,8 @@ mod tests {
             reorder(
                 vec![bts!("a/foo.txt"), bts!("b/foo.txt"), bts!("foo.txt"),],
                 "a/null.txt",
-            )
-            .map(Into::into)
-            .collect::<Vec<Vec<u8>>>(),
+                false,
+            ),
             vec![bts!("a/foo.txt"), bts!("foo.txt"), bts!("b/foo.txt"),]
         );
     }
@@ -221,10 +236,58 @@ mod tests {
             reorder(
                 vec![bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),],
                 "null.txt",
-            )
-            .map(Into::into)
-            .collect::<Vec<Vec<u8>>>(),
+                false,
+            ),
             vec![bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),]
+        );
+    }
+
+    #[test]
+    fn check_sorted() {
+        assert_eq!(
+            reorder(
+                vec![
+                    bts!("b/2.txt"),
+                    bts!("b/1.txt"),
+                    bts!("a/x/2.txt"),
+                    bts!("a/x/1.txt"),
+                    bts!("a/2.txt"),
+                    bts!("a/1.txt"),
+                ],
+                "null.txt",
+                true,
+            ),
+            vec![
+                bts!("a/1.txt"),
+                bts!("a/2.txt"),
+                bts!("b/1.txt"),
+                bts!("b/2.txt"),
+                bts!("a/x/1.txt"),
+                bts!("a/x/2.txt"),
+            ]
+        );
+
+        assert_eq!(
+            reorder(
+                vec![
+                    bts!("b/2.txt"),
+                    bts!("b/1.txt"),
+                    bts!("a/x/2.txt"),
+                    bts!("a/x/1.txt"),
+                    bts!("a/2.txt"),
+                    bts!("a/1.txt"),
+                ],
+                "null.txt",
+                false,
+            ),
+            vec![
+                bts!("b/2.txt"),
+                bts!("a/1.txt"),
+                bts!("b/1.txt"),
+                bts!("a/2.txt"),
+                bts!("a/x/1.txt"),
+                bts!("a/x/2.txt"),
+            ]
         );
     }
 }
