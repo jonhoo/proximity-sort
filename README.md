@@ -61,3 +61,12 @@ command! -bang -nargs=? -complete=dir Files
   \ call fzf#vim#files(<q-args>, {'source': s:list_cmd(),
   \                               'options': '--tiebreak=index'}, <bang>0)
 ```
+
+Paths of the same proximity are sorted alphabetically:
+
+```console
+$ echo "banana\napple/pie\napple" | proximity-sort . -s
+> apple
+> banana
+> apple/pie
+```

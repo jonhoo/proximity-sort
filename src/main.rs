@@ -128,13 +128,15 @@ impl Eq for Line {}
 
 impl PartialOrd for Line {
     fn partial_cmp(&self, other: &Line) -> Option<Ordering> {
-        self.score.partial_cmp(&other.score)
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for Line {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.score.cmp(&other.score)
+        self.score
+            .cmp(&other.score)
+            .then_with(|| OsStr::from_bytes(&other.path).cmp(&OsStr::from_bytes(&self.path)))
     }
 }
 
@@ -225,6 +227,33 @@ mod tests {
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
             vec![bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),]
+        );
+    }
+
+    #[test]
+    fn check_same_proximity_sorted() {
+        assert_eq!(
+            reorder(
+                vec![
+                    bts!("b/2.txt"),
+                    bts!("b/1.txt"),
+                    bts!("a/x/2.txt"),
+                    bts!("a/x/1.txt"),
+                    bts!("a/2.txt"),
+                    bts!("a/1.txt"),
+                ],
+                "null.txt",
+            )
+            .map(Into::into)
+            .collect::<Vec<Vec<u8>>>(),
+            [
+                bts!("a/1.txt"),
+                bts!("a/2.txt"),
+                bts!("b/1.txt"),
+                bts!("b/2.txt"),
+                bts!("a/x/1.txt"),
+                bts!("a/x/2.txt"),
+            ]
         );
     }
 }
