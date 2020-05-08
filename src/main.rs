@@ -136,7 +136,7 @@ impl Ord for Line {
     fn cmp(&self, other: &Self) -> Ordering {
         self.score
             .cmp(&other.score)
-            .then_with(|| other.path.cmp(&self.path))
+            .then_with(|| OsStr::from_bytes(&other.path).cmp(&OsStr::from_bytes(&self.path)))
     }
 }
 
