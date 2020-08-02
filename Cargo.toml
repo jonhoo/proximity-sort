@@ -18,3 +18,7 @@ maintenance = { status = "passively-maintained" }
 
 [dependencies]
 clap = "2.32"
+
+[profile.release]
+lto = "yes"
+codegen-units = 1
