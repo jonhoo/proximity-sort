@@ -12,9 +12,5 @@ repository = "https://github.com/jonhoo/proximity-sort.git"
 keywords = ["cli", "pipe", "filter", "utility"]
 categories = ["command-line-utilities"]
 
-[badges]
-travis-ci = { repository = "jonhoo/proximity-sort" }
-maintenance = { status = "passively-maintained" }
-
 [dependencies]
 clap = "2.32"
