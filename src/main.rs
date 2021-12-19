@@ -72,7 +72,7 @@ where
 {
     let path: Vec<_> = Path::new(context_path).components().collect();
     let mut lines = BinaryHeap::new();
-    for line in input {
+    for (i, line) in input.into_iter().enumerate() {
         let mut missed = false;
         let mut path = path.iter();
         let proximity = Path::new(OsStr::from_bytes(&line))
@@ -101,6 +101,7 @@ where
         lines.push(Line {
             score: proximity,
             path: line,
+            i,
         })
     }
 
@@ -109,6 +110,7 @@ where
 
 struct Line {
     score: isize,
+    i: usize,
     path: Vec<u8>,
 }
 
@@ -136,7 +138,7 @@ impl Ord for Line {
     fn cmp(&self, other: &Self) -> Ordering {
         self.score
             .cmp(&other.score)
-            .then_with(|| OsStr::from_bytes(&other.path).cmp(&OsStr::from_bytes(&self.path)))
+            .then_with(|| other.i.cmp(&self.i))
     }
 }
 
@@ -221,12 +223,12 @@ mod tests {
     fn check_stable() {
         assert_eq!(
             reorder(
-                vec![bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),],
+                vec![bts!("c.txt"), bts!("b.txt"), bts!("a.txt"),],
                 "null.txt",
             )
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
-            vec![bts!("first.txt"), bts!("second.txt"), bts!("third.txt"),]
+            vec![bts!("c.txt"), bts!("b.txt"), bts!("a.txt"),]
         );
     }
 
@@ -247,12 +249,12 @@ mod tests {
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
             [
-                bts!("a/1.txt"),
-                bts!("a/2.txt"),
-                bts!("b/1.txt"),
                 bts!("b/2.txt"),
-                bts!("a/x/1.txt"),
+                bts!("b/1.txt"),
+                bts!("a/2.txt"),
+                bts!("a/1.txt"),
                 bts!("a/x/2.txt"),
+                bts!("a/x/1.txt"),
             ]
         );
     }
