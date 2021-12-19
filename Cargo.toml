@@ -1,6 +1,6 @@
 [package]
 name = "proximity-sort"
-version = "1.0.7"
+version = "1.1.0"
 authors = ["Jon Gjengset <jon@thesquareplanet.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
