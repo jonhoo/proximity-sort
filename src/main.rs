@@ -70,13 +70,17 @@ fn reorder<I>(input: I, context_path: &str) -> impl Iterator<Item = Line>
 where
     I: IntoIterator<Item = Vec<u8>>,
 {
-    let path: Vec<_> = Path::new(context_path).components().collect();
+    let path: Vec<_> = Path::new(context_path)
+        .components()
+        .skip_while(|c| matches!(c, std::path::Component::CurDir))
+        .collect();
     let mut lines = BinaryHeap::new();
     for (i, line) in input.into_iter().enumerate() {
         let mut missed = false;
         let mut path = path.iter();
         let proximity = Path::new(OsStr::from_bytes(&line))
             .components()
+            .skip_while(|c| matches!(c, std::path::Component::CurDir))
             .map(|c| {
                 // if we've already missed, each additional dir is one further away
                 if missed {
@@ -229,6 +233,27 @@ mod tests {
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
             vec![bts!("c.txt"), bts!("b.txt"), bts!("a.txt"),]
+        );
+    }
+
+    #[test]
+    fn skip_leading_dot() {
+        assert_eq!(
+            reorder(
+                vec![
+                    bts!("./first.txt"),
+                    bts!("././second.txt"),
+                    bts!("third.txt"),
+                ],
+                "null.txt",
+            )
+            .map(Into::into)
+            .collect::<Vec<Vec<u8>>>(),
+            vec![
+                bts!("./first.txt"),
+                bts!("././second.txt"),
+                bts!("third.txt"),
+            ]
         );
     }
 
