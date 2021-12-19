@@ -112,6 +112,7 @@ where
     BinaryHeapIterator { heap: lines }
 }
 
+#[derive(Debug)]
 struct Line {
     score: isize,
     i: usize,
