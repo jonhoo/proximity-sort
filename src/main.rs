@@ -1,42 +1,41 @@
 #![warn(rust_2018_idioms)]
 
-use clap::{App, Arg};
+use clap::Parser;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::ffi::OsStr;
 use std::io::prelude::*;
 use std::io::{self, BufReader, BufWriter};
 use std::os::unix::ffi::OsStrExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+#[derive(Parser)]
+#[clap(
+    name = "proximity-sort",
+    about = "Sort inputs by proximity to the given path",
+    author,
+    version
+)]
+struct Opt {
+    /// Print output delimited by ASCII NUL characters instead of newline characters.
+    #[clap(long)]
+    print0: bool,
+
+    /// Read input delimited by ASCII NUL characters instead of newline characters.
+    #[clap(long, short = '0')]
+    read0: bool,
+
+    /// Compute the proximity to this path.
+    #[clap(name = "PATH", value_parser)]
+    path: PathBuf,
+}
 
 fn main() {
-    let matches =
-        App::new("Proximity Sorter")
-            .author("Jon Gjengset <jon@thesquareplanet.com>")
-            .about("Sort inputs by proximity to the given path")
-            .arg(
-                Arg::with_name("PATH")
-                    .help("Compute the proximity to this path.")
-                    .required(true)
-                    .index(1),
-            )
-            .arg(
-                Arg::with_name("read0").short("0").long("read0").help(
-                    "Read input delimited by ASCII NUL characters instead of newline characters",
-                ),
-            )
-            .arg(Arg::with_name("print0").long("print0").help(
-                "Print output delimited by ASCII NUL characters instead of newline characters",
-            ))
-            .get_matches();
+    let args = Opt::parse();
 
     let stdin = io::stdin();
     let input = BufReader::new(stdin.lock());
-    let insep = if matches.is_present("read0") {
-        b'\0'
-    } else {
-        b'\n'
-    };
+    let insep = if args.read0 { b'\0' } else { b'\n' };
     let input = input.split(insep).map(|line| match line {
         Ok(line) => line,
         Err(e) => {
@@ -44,21 +43,11 @@ fn main() {
         }
     });
 
-    let path = if let Some(path) = matches.value_of("PATH") {
-        path
-    } else {
-        clap::Error::argument_not_found_auto("PATH").exit();
-    };
-
     let stdout = io::stdout();
     let mut output = BufWriter::new(stdout.lock());
-    let outsep = if matches.is_present("print0") {
-        b'\0'
-    } else {
-        b'\n'
-    };
+    let outsep = if args.print0 { b'\0' } else { b'\n' };
 
-    for mut line in reorder(input, path) {
+    for mut line in reorder(input, &args.path) {
         line.path.push(outsep);
         if let Err(e) = output.write_all(&line.path) {
             panic!("failed to write path: {}", e);
@@ -66,7 +55,7 @@ fn main() {
     }
 }
 
-fn reorder<I>(input: I, context_path: &str) -> impl Iterator<Item = Line>
+fn reorder<I>(input: I, context_path: &Path) -> impl Iterator<Item = Line>
 where
     I: IntoIterator<Item = Vec<u8>>,
 {
@@ -181,7 +170,7 @@ mod tests {
                     bts!("bar/main.txt"),
                     bts!("misc/test.txt"),
                 ],
-                "bar/main.txt",
+                Path::new("bar/main.txt"),
             )
             .take(2)
             .map(Into::into)
@@ -198,7 +187,7 @@ mod tests {
                     bts!("foobar/controller/admin.rb"),
                     bts!("foobar/views/admin.rb"),
                 ],
-                "foobar/controller/admin.rb",
+                Path::new("foobar/controller/admin.rb"),
             )
             .take(3)
             .map(Into::into)
@@ -216,7 +205,7 @@ mod tests {
         assert_eq!(
             reorder(
                 vec![bts!("a/foo.txt"), bts!("b/foo.txt"), bts!("foo.txt"),],
-                "a/null.txt",
+                Path::new("a/null.txt"),
             )
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
@@ -229,7 +218,7 @@ mod tests {
         assert_eq!(
             reorder(
                 vec![bts!("c.txt"), bts!("b.txt"), bts!("a.txt"),],
-                "null.txt",
+                Path::new("null.txt"),
             )
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
@@ -246,7 +235,7 @@ mod tests {
                     bts!("././second.txt"),
                     bts!("third.txt"),
                 ],
-                "null.txt",
+                Path::new("null.txt"),
             )
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
@@ -270,7 +259,7 @@ mod tests {
                     bts!("a/2.txt"),
                     bts!("a/1.txt"),
                 ],
-                "null.txt",
+                Path::new("null.txt"),
             )
             .map(Into::into)
             .collect::<Vec<Vec<u8>>>(),
