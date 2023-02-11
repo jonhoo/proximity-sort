@@ -13,7 +13,7 @@ keywords = ["cli", "pipe", "filter", "utility"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-clap = { version = "3", features = ["derive"] }
+clap = { version = "4.1.4", features = ["derive", "wrap_help"] }
 
 [profile.release]
 lto = "yes"

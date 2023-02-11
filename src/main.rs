@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 #[clap(
     name = "proximity-sort",
     about = "Sort inputs by proximity to the given path",
-    author,
     version
 )]
 struct Opt {
@@ -26,7 +25,7 @@ struct Opt {
     read0: bool,
 
     /// Compute the proximity to this path.
-    #[clap(name = "PATH", value_parser)]
+    #[clap(name = "PATH")]
     path: PathBuf,
 }
 
