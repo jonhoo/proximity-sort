@@ -1,7 +1,9 @@
 # proximity-sort
 
 [![Crates.io](https://img.shields.io/crates/v/proximity-sort.svg)](https://crates.io/crates/proximity-sort)
-[![Build Status](https://travis-ci.org/jonhoo/proximity-sort.svg?branch=master)](https://travis-ci.org/jonhoo/proximity-sort)
+[![Documentation](https://docs.rs/proximity-sort/badge.svg)](https://docs.rs/proximity-sort/)
+[![Codecov](https://codecov.io/github/jonhoo/proximity-sort/coverage.svg?branch=master)](https://codecov.io/gh/jonhoo/proximity-sort)
+[![Dependency status](https://deps.rs/repo/github/jonhoo/proximity-sort/status.svg)](https://deps.rs/repo/github/jonhoo/proximity-sort)
 
 This script provides a simple command-line utility that sorts its inputs
 by their path proximity to a given path. For example, for a path
