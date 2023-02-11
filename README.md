@@ -1,7 +1,6 @@
 # proximity-sort
 
 [![Crates.io](https://img.shields.io/crates/v/proximity-sort.svg)](https://crates.io/crates/proximity-sort)
-[![Documentation](https://docs.rs/proximity-sort/badge.svg)](https://docs.rs/proximity-sort/)
 [![Codecov](https://codecov.io/github/jonhoo/proximity-sort/coverage.svg?branch=master)](https://codecov.io/gh/jonhoo/proximity-sort)
 [![Dependency status](https://deps.rs/repo/github/jonhoo/proximity-sort/status.svg)](https://deps.rs/repo/github/jonhoo/proximity-sort)
 
