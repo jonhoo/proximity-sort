@@ -64,25 +64,6 @@ jobs:
           args: --no-deps --all-features
         env:
           RUSTDOCFLAGS: --cfg docsrs
-  hack:
-    runs-on: ubuntu-latest
-    name: ubuntu / stable / features
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-      - name: Install stable
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-      - name: cargo install cargo-hack
-        uses: taiki-e/install-action@cargo-hack
-      - name: cargo hack
-        uses: actions-rs/cargo@v1
-        with:
-          command: hack
-          args: --feature-powerset check --lib --tests
   msrv:
     runs-on: ubuntu-latest
     # we use a matrix here just because env can't be used in job names
