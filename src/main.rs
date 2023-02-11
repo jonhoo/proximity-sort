@@ -1,12 +1,11 @@
 #![warn(rust_2018_idioms)]
 
 use clap::Parser;
+use os_str_bytes::RawOsStr;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-use std::ffi::OsStr;
 use std::io::prelude::*;
 use std::io::{self, BufReader, BufWriter};
-use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
@@ -45,7 +44,6 @@ fn main() {
     let stdout = io::stdout();
     let mut output = BufWriter::new(stdout.lock());
     let outsep = if args.print0 { b'\0' } else { b'\n' };
-
     for mut line in reorder(input, &args.path) {
         line.path.push(outsep);
         if let Err(e) = output.write_all(&line.path) {
@@ -58,7 +56,7 @@ fn reorder<I>(input: I, context_path: &Path) -> impl Iterator<Item = Line>
 where
     I: IntoIterator<Item = Vec<u8>>,
 {
-    let path: Vec<_> = Path::new(context_path)
+    let path: Vec<_> = context_path
         .components()
         .skip_while(|c| matches!(c, std::path::Component::CurDir))
         .collect();
@@ -66,7 +64,9 @@ where
     for (i, line) in input.into_iter().enumerate() {
         let mut missed = false;
         let mut path = path.iter();
-        let proximity = Path::new(OsStr::from_bytes(&line))
+        let os_str = RawOsStr::assert_from_raw_bytes(&line);
+        let os_str = os_str.to_os_str();
+        let proximity = Path::new(&os_str)
             .components()
             .skip_while(|c| matches!(c, std::path::Component::CurDir))
             .map(|c| {
