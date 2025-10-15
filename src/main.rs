@@ -64,7 +64,7 @@ where
     for (i, line) in input.into_iter().enumerate() {
         let mut missed = false;
         let mut path = path.iter();
-        let os_str = RawOsStr::assert_from_raw_bytes(&line);
+        let os_str = RawOsStr::assert_cow_from_raw_bytes(&line);
         let os_str = os_str.to_os_str();
         let proximity = Path::new(&os_str)
             .components()
