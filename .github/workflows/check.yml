@@ -1,88 +1,120 @@
+# This workflow runs whenever a PR is opened or updated, or a commit is pushed to main. It runs
+# several checks:
+# - fmt: checks that the code is formatted according to rustfmt
+# - clippy: checks that the code does not contain any clippy warnings
+# - doc: checks that the code can be documented without errors
+# - hack: check combinations of feature flags
+# - msrv: check that the msrv specified in the crate is correct
+permissions:
+  contents: read
+# This configuration allows maintainers of this repo to create a branch and pull request based on
+# the new branch. Restricting the push trigger to the main branch ensures that the PR only gets
+# built once.
 on:
   push:
     branches: [main]
   pull_request:
+# If new code is pushed to a PR branch, then cancel in progress workflows for that PR. Ensures that
+# we don't waste CI time, and returns results quicker https://github.com/jonhoo/rust-ci-conf/pull/5
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 name: check
 jobs:
   fmt:
     runs-on: ubuntu-latest
     name: stable / fmt
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # tag=v7.0.1
         with:
           submodules: true
       - name: Install stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # branch=master
         with:
-          profile: minimal
           toolchain: stable
           components: rustfmt
       - name: cargo fmt --check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --check
+        run: cargo fmt --check
   clippy:
     runs-on: ubuntu-latest
     name: ${{ matrix.toolchain }} / clippy
+    permissions:
+      contents: read
+      checks: write
     strategy:
       fail-fast: false
       matrix:
+        # Get early warning of new lints which are regularly introduced in beta channels.
         toolchain: [stable, beta]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # tag=v7.0.1
         with:
           submodules: true
       - name: Install ${{ matrix.toolchain }}
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # branch=master
         with:
-          profile: minimal
           toolchain: ${{ matrix.toolchain }}
-          default: true
           components: clippy
       - name: cargo clippy
-        uses: actions-rs/clippy-check@v1
+        uses: giraffate/clippy-action@13b9d32482f25d29ead141b79e7e04e7900281e0 # tag=v1.0.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-  doc:
-    runs-on: ubuntu-latest
-    name: nightly / doc
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-      - name: Install nightly
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          default: true
-      - name: cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps --all-features
-        env:
-          RUSTDOCFLAGS: --cfg docsrs
+          reporter: 'github-pr-check'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+  # NOTE: removed the semver and doc jobs since we don't have a [lib]
   msrv:
+    # check that we can build using the minimal rust version that is specified by this crate
     runs-on: ubuntu-latest
     # we use a matrix here just because env can't be used in job names
     # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
     strategy:
       matrix:
-        msrv: [1.64.0] # clap 4
+        msrv: ["1.64.0"] # clap 4
     name: ubuntu / ${{ matrix.msrv }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # tag=v7.0.1
         with:
           submodules: true
-      - name: Install ${{ matrix.toolchain }}
-        uses: actions-rs/toolchain@v1
+      # The MSRV is what this crate _could_ build with if its dependencies were downgraded as far as
+      # Cargo.toml allows, not whatever the newest release of each dependency happens to need. So
+      # rather than build against the latest (or committed) dependency versions, we re-resolve with
+      # the MSRV-aware resolver, which picks the newest versions whose `rust-version` is compatible
+      # with `package.rust-version`. That resolver needs cargo 1.84+, which the MSRV toolchain need
+      # not be, so we resolve with stable and only build with the MSRV toolchain. Stable is
+      # installed first so that the MSRV toolchain ends up as the default.
+      - name: Install stable
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # branch=master
         with:
-          profile: minimal
+          toolchain: stable
+      - name: Install ${{ matrix.msrv }}
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # branch=master
+        with:
           toolchain: ${{ matrix.msrv }}
-          default: true
-      - name: cargo +${{ matrix.msrv }} check
-        uses: actions-rs/cargo@v1
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # tag=v6.1.0
         with:
-          command: check
+          path: ~/.cargo
+          key: ${{ runner.os }}-cargo
+      # The resolver targets `package.rust-version`, not the toolchain in the matrix, so warn if the
+      # two have drifted apart. Without a `rust-version`, the resolver targets stable instead, so
+      # dependencies aren't downgraded at all.
+      - name: Check that rust-version matches ${{ matrix.msrv }}
+        run: |
+          rvs=$(cargo +stable metadata --no-deps --format-version 1 | jq -r '.packages[].rust_version // empty' | sort -u | paste -sd ' ' -)
+          if [ -z "$rvs" ]; then
+            echo "::warning::no package sets rust-version, so dependencies will not be resolved to MSRV-compatible versions"
+            exit 0
+          fi
+          for rv in $rvs; do
+            case "${{ matrix.msrv }}" in "$rv" | "$rv".*) exit 0 ;; esac
+          done
+          echo "::warning::msrv in check.yml (${{ matrix.msrv }}) does not match any package rust-version ($rvs)"
+      # We use generate-lockfile rather than update since update keeps the format version of an
+      # existing Cargo.lock, and cargo older than 1.78 cannot read the v4 format. generate-lockfile
+      # instead picks a format that `rust-version` can read.
+      - name: cargo +stable generate-lockfile (MSRV-aware)
+        run: cargo +stable generate-lockfile
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
+      # --locked so that an older cargo fails loudly rather than quietly re-resolving if it cannot
+      # use the versions picked above (e.g., because it cannot parse their index entries).
+      - name: cargo +${{ matrix.msrv }} check
+        run: cargo +${{ matrix.msrv }} check --locked
