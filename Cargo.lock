@@ -169,7 +169,6 @@ name = "proximity-sort"
 version = "1.3.0"
 dependencies = [
  "clap",
- "os_str_bytes",
 ]
 
 [[package]]
