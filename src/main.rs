@@ -1,7 +1,7 @@
 #![warn(rust_2018_idioms)]
 
 use clap::Parser;
-use os_str_bytes::RawOsStr;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::io::prelude::*;
@@ -64,9 +64,7 @@ where
     for (i, line) in input.into_iter().enumerate() {
         let mut missed = false;
         let mut path = path.iter();
-        let os_str = RawOsStr::assert_from_raw_bytes(&line);
-        let os_str = os_str.to_os_str();
-        let proximity = Path::new(&os_str)
+        let proximity = line_as_path(&line)
             .components()
             .skip_while(|c| matches!(c, std::path::Component::CurDir))
             .map(|c| {
@@ -98,6 +96,47 @@ where
     }
 
     BinaryHeapIterator { heap: lines }
+}
+
+/// Interprets a raw input line as a path so that it can be split into components for scoring.
+///
+/// The result is only used to compute the proximity score; the original bytes are what get
+/// printed, so any lossiness here affects ordering but never the output itself.
+#[cfg(unix)]
+fn line_as_path(line: &[u8]) -> Cow<'_, Path> {
+    // On Unix, paths are arbitrary byte sequences, so every line is a valid path as-is.
+    use std::os::unix::ffi::OsStrExt;
+    Cow::Borrowed(Path::new(std::ffi::OsStr::from_bytes(line)))
+}
+
+/// Interprets a raw input line as a path so that it can be split into components for scoring.
+///
+/// The result is only used to compute the proximity score; the original bytes are what get
+/// printed, so any lossiness here affects ordering but never the output itself.
+#[cfg(not(unix))]
+fn line_as_path(line: &[u8]) -> Cow<'_, Path> {
+    // Elsewhere (notably Windows), `OsStr`'s internal encoding cannot be safely constructed from
+    // arbitrary bytes: `OsStr::from_encoded_bytes_unchecked` requires the bytes to have come
+    // from `OsStr::as_encoded_bytes` (or be valid UTF-8), which stdin does not guarantee. So we
+    // decode as UTF-8 instead, replacing any invalid sequences rather than panicking on them.
+    //
+    // UTF-8 is the right assumption here given how proximity-sort is used: sitting between a
+    // file lister and `fzf`. Windows file names are UTF-16 natively, so whatever produces our
+    // input has already had to pick a byte encoding, and the common producers all pick UTF-8:
+    // `fd` and `rg --files` (the usual `FZF_DEFAULT_COMMAND`s) write paths as lossy UTF-8 on
+    // Windows, as does `fzf`'s own Go-based file walker. Our output also goes back to `fzf`,
+    // which interprets it as UTF-8 too.
+    //
+    // The case this doesn't handle well is input in a legacy code page, such as `dir /b` in
+    // `cmd` or Windows PowerShell 5.1 with its default `$OutputEncoding`. There, any path
+    // component with non-ASCII characters gets U+FFFD replacements and so won't match the
+    // context path, though earlier components still score normally and the line is still
+    // printed byte-for-byte. Decoding such input properly would require guessing the code page
+    // the producer used, which isn't knowable when stdin is a pipe, so we don't try.
+    match String::from_utf8_lossy(line) {
+        Cow::Borrowed(s) => Cow::Borrowed(Path::new(s)),
+        Cow::Owned(s) => Cow::Owned(PathBuf::from(s)),
+    }
 }
 
 #[derive(Debug)]
