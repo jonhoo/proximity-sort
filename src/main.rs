@@ -146,9 +146,9 @@ struct Line {
     path: Vec<u8>,
 }
 
-impl Into<Vec<u8>> for Line {
-    fn into(self) -> Vec<u8> {
-        self.path
+impl From<Line> for Vec<u8> {
+    fn from(val: Line) -> Self {
+        val.path
     }
 }
 
